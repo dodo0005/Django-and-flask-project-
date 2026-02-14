@@ -1,0 +1,201 @@
+{% extends "djangoapp/base.html" %}
+
+{% block content %}
+<style>
+    .story-builder {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    .page-card {
+        background: #f9f9f9;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    .choice-item {
+        background: #fff;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 4px;
+    }
+</style>
+
+<div class="story-builder">
+    <h1>✨ Create New Story</h1>
+    
+    <form method="post" id="storyForm">
+        {% csrf_token %}
+        
+        <!-- Story Info -->
+        <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <h2>Story Information</h2>
+            <div class="form-group">
+                <label><strong>Title:</strong></label>
+                <input type="text" name="title" required placeholder="Enter story title">
+            </div>
+            <div class="form-group">
+                <label><strong>Description:</strong></label>
+                <textarea name="description" rows="3" placeholder="Describe your story..."></textarea>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" name="publish_immediately" value="true" style="width: auto;">
+                    <span><strong>📤 Publish immediately</strong> (make it public right away)</span>
+                </label>
+                <small style="color: #666; display: block; margin-left: 30px;">
+                    If unchecked, story will be saved as draft. You can publish it later from "My Stories".
+                </small>
+            </div>
+        </div>
+
+        <!-- Pages Section -->
+        <div id="pagesContainer">
+            <h2>Story Pages</h2>
+            <p style="color: #666; font-size: 14px;">Page 0 will be the start page. Add pages, then connect them with choices.</p>
+        </div>
+
+        <!-- Add Page Button -->
+        <button type="button" class="btn btn-success" onclick="addPage()">+ Add Page</button>
+        
+        <!-- Submit -->
+        <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
+            <button type="submit" class="btn btn-primary" style="font-size: 16px; padding: 12px 30px;">
+                Create Story
+            </button>
+            <a href="{% url 'story_list' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+let pageCount = 0;
+
+// Add initial pages on load
+window.onload = function() {
+    addPage(); // Start page
+    addPage(); // Add one more page by default
+};
+
+function addPage() {
+    const pageIndex = pageCount;
+    pageCount++;
+    
+    const pageDiv = document.createElement('div');
+    pageDiv.className = 'page-card';
+    pageDiv.id = `page-${pageIndex}`;
+    
+    pageDiv.innerHTML = `
+        <div class="page-header">
+            <h3>Page ${pageIndex} ${pageIndex === 0 ? '(START)' : ''}</h3>
+            ${pageIndex > 0 ? `<button type="button" class="btn btn-danger" onclick="removePage(${pageIndex})">Delete Page</button>` : ''}
+        </div>
+        
+        <div class="form-group">
+            <label><strong>Page Text:</strong></label>
+            <textarea name="page_text[]" rows="4" required placeholder="What happens on this page?"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="page_ending[]" value="${pageIndex}" onchange="toggleEnding(${pageIndex})" style="width: auto;">
+                This is an ending page
+            </label>
+        </div>
+        
+        <div id="ending-label-${pageIndex}" style="display: none; margin-left: 20px;">
+            <div class="form-group">
+                <label><strong>Ending Label:</strong></label>
+                <input type="text" name="page_ending_label[]" placeholder="e.g., 'Good Ending', 'Bad Ending'">
+            </div>
+        </div>
+        
+        <div id="choices-${pageIndex}">
+            <h4>Choices from this page:</h4>
+            <div id="choices-container-${pageIndex}"></div>
+            <button type="button" class="btn btn-secondary" onclick="addChoice(${pageIndex})">+ Add Choice</button>
+        </div>
+    `;
+    
+    document.getElementById('pagesContainer').appendChild(pageDiv);
+}
+
+function removePage(pageIndex) {
+    if (confirm('Delete this page?')) {
+        document.getElementById(`page-${pageIndex}`).remove();
+    }
+}
+
+function toggleEnding(pageIndex) {
+    const checkbox = document.querySelector(`input[name="page_ending[]"][value="${pageIndex}"]`);
+    const endingLabel = document.getElementById(`ending-label-${pageIndex}`);
+    const choicesDiv = document.getElementById(`choices-${pageIndex}`);
+    
+    if (checkbox.checked) {
+        endingLabel.style.display = 'block';
+        choicesDiv.style.display = 'none'; // Endings don't have choices
+    } else {
+        endingLabel.style.display = 'none';
+        choicesDiv.style.display = 'block';
+    }
+}
+
+function addChoice(pageIndex) {
+    const choicesContainer = document.getElementById(`choices-container-${pageIndex}`);
+    
+    const choiceDiv = document.createElement('div');
+    choiceDiv.className = 'choice-item';
+    choiceDiv.innerHTML = `
+        <div class="form-group" style="margin-bottom: 10px;">
+            <label><strong>Choice Text:</strong></label>
+            <input type="text" name="choice_${pageIndex}_text[]" placeholder="What's the choice?" required>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 10px;">
+            <label><strong>Goes to Page:</strong></label>
+            <select name="choice_${pageIndex}_target[]" required>
+                <option value="">-- Select page --</option>
+                ${Array.from({length: 20}, (_, i) => 
+                    `<option value="${i}">Page ${i}${i === 0 ? ' (START)' : ''}</option>`
+                ).join('')}
+            </select>
+        </div>
+        
+        <button type="button" class="btn btn-danger" style="padding: 6px 12px; font-size: 13px;" onclick="this.parentElement.remove()">
+            Remove Choice
+        </button>
+    `;
+    
+    choicesContainer.appendChild(choiceDiv);
+}
+
+// Validate form before submit
+document.getElementById('storyForm').onsubmit = function(e) {
+    const pages = document.querySelectorAll('.page-card');
+    if (pages.length < 2) {
+        alert('You need at least 2 pages (a start page and an ending)!');
+        e.preventDefault();
+        return false;
+    }
+    
+    // Check if there's at least one ending
+    const endings = document.querySelectorAll('input[name="page_ending[]"]:checked');
+    if (endings.length === 0) {
+        alert('You need at least one ending page!');
+        e.preventDefault();
+        return false;
+    }
+    
+    return true;
+};
+</script>
+
+{% endblock %}

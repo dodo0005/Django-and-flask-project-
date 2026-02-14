@@ -1,0 +1,76 @@
+{% extends "djangoapp/base.html" %}
+
+{% block title %}My Stories - NAHB Adventure{% endblock %}
+
+{% block content %}
+<h1>📖 My Stories</h1>
+
+{% if stories %}
+    <p style="color: #666; margin-bottom: 20px;">
+        You have {{ stories|length }} stor{{ stories|length|pluralize:"y,ies" }}
+    </p>
+    
+    {% for story in stories %}
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div style="flex: 1;">
+                <h3>{{ story.title }}</h3>
+                <p style="color: #666; margin: 10px 0;">{{ story.description|truncatewords:30 }}</p>
+                
+                <div style="margin-top: 10px;">
+                    <span class="badge badge-{{ story.status }}">
+                        {% if story.status == 'draft' %}📝 Draft
+                        {% elif story.status == 'published' %}✅ Published
+                        {% elif story.status == 'suspended' %}🚫 Suspended
+                        {% else %}{{ story.status }}
+                        {% endif %}
+                    </span>
+                    <span style="color: #999; font-size: 13px; margin-left: 10px;">
+                        ID: {{ story.id }} | Start Page: {{ story.start_page_id|default:"Not set" }}
+                    </span>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; flex-direction: column; min-width: 150px;">
+                <a href="{% url 'start_story' story.id %}" class="btn btn-primary" style="text-align: center;">
+                    ▶️ Play
+                </a>
+                <a href="{% url 'edit_story' story.id %}" class="btn btn-secondary" style="text-align: center;">
+                    ✏️ Edit
+                </a>
+                
+                {% if story.status == 'draft' %}
+                    <form method="post" action="{% url 'publish_story_author' story.id %}" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success" style="width: 100%;">
+                            📤 Publish
+                        </button>
+                    </form>
+                {% elif story.status == 'published' %}
+                    <form method="post" action="{% url 'unpublish_story_author' story.id %}" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-secondary" style="width: 100%;">
+                            📥 Unpublish
+                        </button>
+                    </form>
+                {% endif %}
+                
+                <a href="{% url 'delete_story' story.id %}" class="btn btn-danger" style="text-align: center;">
+                    🗑️ Delete
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    
+{% else %}
+    <div class="card" style="text-align: center; padding: 60px 20px;">
+        <h2>📝 No stories yet!</h2>
+        <p style="color: #666; margin: 20px 0;">Create your first interactive story and share it with the world.</p>
+        <a href="{% url 'create_story' %}" class="btn btn-success" style="font-size: 18px; padding: 15px 30px;">
+            ✨ Create Your First Story
+        </a>
+    </div>
+{% endif %}
+
+{% endblock %}

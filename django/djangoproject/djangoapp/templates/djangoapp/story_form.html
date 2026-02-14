@@ -1,0 +1,289 @@
+{% extends "djangoapp/base.html" %}
+
+{% block title %}Edit Story - NAHB Adventure{% endblock %}
+
+{% block content %}
+<style>
+    .page-card {
+        background: #f9f9f9;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        position: relative;
+    }
+    .page-card.start-page { border-color: #4caf50; background: #f0fdf4; }
+    .page-card.ending-page { border-color: #ef5350; background: #fff5f5; }
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    .choice-row {
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 8px 0;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .choice-row input, .choice-row select { flex: 1; min-width: 150px; }
+    .badge-start { background: #4caf50; color: white; padding: 3px 10px; border-radius: 12px; font-size: 13px; }
+    .badge-ending { background: #ef5350; color: white; padding: 3px 10px; border-radius: 12px; font-size: 13px; }
+    .section-box { background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    .new-page-card { border: 2px dashed #90caf9; background: #f0f8ff; }
+    label { font-weight: 600; display: block; margin-bottom: 4px; }
+    .btn-sm { padding: 5px 12px; font-size: 13px; }
+    .hidden { display: none; }
+</style>
+
+<div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
+    <h1>✏️ Edit: {{ story.title }}</h1>
+
+    {# Pass page IDs to JS safely via a data attribute on a single element #}
+    <div id="page-id-data" data-page-ids="{{ all_page_ids|join:',' }}" class="hidden"></div>
+
+    <form method="post" id="editForm">
+        {% csrf_token %}
+
+        <!-- Story Metadata -->
+        <div class="section-box">
+            <h2>Story Info</h2>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" name="title" value="{{ story.title }}" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" rows="3">{{ story.description }}</textarea>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status">
+                    <option value="draft" {% if story.status == 'draft' %}selected{% endif %}>📝 Draft</option>
+                    <option value="published" {% if story.status == 'published' %}selected{% endif %}>✅ Published</option>
+                    <option value="suspended" {% if story.status == 'suspended' %}selected{% endif %}>🚫 Suspended</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Existing Pages -->
+        <h2>Pages</h2>
+        <p style="color:#666; font-size:14px;">Edit pages and choices below. Use the delete buttons to remove them, or add new ones at the bottom.</p>
+
+        {% for page in pages %}
+        <div class="page-card {% if page.is_start %}start-page{% endif %} {% if page.is_ending %}ending-page{% endif %}" id="page-{{ page.id }}">
+
+            <input type="hidden" name="existing_page_id[]" value="{{ page.id }}">
+
+            <div class="page-header">
+                <div>
+                    <strong>Page {{ forloop.counter }}</strong>
+                    {% if page.is_start %}<span class="badge-start">START</span>{% endif %}
+                    {% if page.is_ending %}<span class="badge-ending">ENDING</span>{% endif %}
+                    <small style="color:#999; margin-left:8px;">ID: {{ page.id }}</small>
+                </div>
+                <button type="button" class="btn btn-danger btn-sm" onclick="deletePage('{{ page.id }}')">
+                    🗑️ Delete Page
+                </button>
+                <input type="hidden" name="delete_page[]" id="del-page-{{ page.id }}" value="" disabled>
+            </div>
+
+            <div class="form-group">
+                <label>Page Text</label>
+                <textarea name="existing_page_text[]" rows="3" required>{{ page.text }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label style="display:flex; align-items:center; gap:8px; font-weight:normal;">
+                    <input type="checkbox" name="existing_page_ending[]" value="{{ page.id }}"
+                        id="ending-check-{{ page.id }}"
+                        onchange="toggleEndingLabel('{{ page.id }}')"
+                        {% if page.is_ending %}checked{% endif %}
+                        style="width:auto;">
+                    This is an ending page
+                </label>
+            </div>
+
+            <div id="ending-label-{{ page.id }}" class="{% if not page.is_ending %}hidden{% endif %}" style="margin-left:20px;">
+                <div class="form-group">
+                    <label>Ending Label</label>
+                    <input type="text" name="existing_page_ending_label[]"
+                        value="{{ page.ending_label|default:'' }}"
+                        placeholder="e.g. Good Ending, Bad Ending">
+                </div>
+            </div>
+
+            <div id="choices-section-{{ page.id }}" class="{% if page.is_ending %}hidden{% endif %}">
+                <h4 style="margin-top:15px;">Choices</h4>
+                <div id="choices-list-{{ page.id }}">
+                    {% for choice in page.choices %}
+                    <div class="choice-row" id="choice-row-{{ choice.id }}">
+                        <input type="hidden" name="choice_id_{{ page.id }}[]" value="{{ choice.id }}">
+                        <input type="text" name="choice_text_{{ page.id }}[]"
+                            value="{{ choice.text }}" placeholder="Choice text" required>
+                        <select name="choice_target_{{ page.id }}[]" required>
+                            {% for pid in all_page_ids %}
+                            <option value="{{ pid }}" {% if pid == choice.next_page_id %}selected{% endif %}>
+                                Page ID {{ pid }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn btn-danger btn-sm"
+                            onclick="deleteChoice('{{ page.id }}', '{{ choice.id }}')">
+                            ✕ Remove
+                        </button>
+                        <input type="hidden" name="delete_choice_{{ page.id }}[]"
+                            id="del-choice-{{ choice.id }}" value="" disabled>
+                    </div>
+                    {% empty %}
+                    <p style="color:#999; font-size:13px;">No choices yet.</p>
+                    {% endfor %}
+                </div>
+
+                <div id="new-choices-{{ page.id }}"></div>
+                <button type="button" class="btn btn-secondary btn-sm"
+                    data-page-id="{{ page.id }}"
+                    onclick="addNewChoice(this.dataset.pageId)">
+                    + Add Choice
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <p style="color:#999;">No pages yet. Add one below.</p>
+        {% endfor %}
+
+        <!-- New Pages -->
+        <h2 style="margin-top:30px;">Add New Pages</h2>
+        <div id="new-pages-container"></div>
+        <button type="button" class="btn btn-success" onclick="addNewPage()">
+            + Add Page
+        </button>
+
+        <!-- Submit -->
+        <div style="margin-top:30px; padding:20px; background:#f5f5f5; border-radius:8px; display:flex; gap:10px;">
+            <button type="submit" class="btn btn-primary" style="font-size:16px; padding:12px 30px;">
+                💾 Save All Changes
+            </button>
+            <a href="{% url 'my_stories' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+// Read page IDs from the data attribute — no Django tags inside JS
+var allPageIds = (function() {
+    var raw = document.getElementById('page-id-data').dataset.pageIds;
+    return raw ? raw.split(',').map(Number) : [];
+})();
+
+var newPageCount = 0;
+
+function buildPageOptions(selectedId) {
+    return allPageIds.map(function(id) {
+        var sel = (id === selectedId) ? ' selected' : '';
+        return '<option value="' + id + '"' + sel + '>Page ID ' + id + '</option>';
+    }).join('');
+}
+
+function toggleEndingLabel(pageId) {
+    var cb = document.getElementById('ending-check-' + pageId);
+    document.getElementById('ending-label-' + pageId).classList.toggle('hidden', !cb.checked);
+    document.getElementById('choices-section-' + pageId).classList.toggle('hidden', cb.checked);
+}
+
+function deletePage(pageId) {
+    if (!confirm('Delete this page and all its choices?')) return;
+    var card = document.getElementById('page-' + pageId);
+    card.style.opacity = '0.4';
+    card.style.pointerEvents = 'none';
+    var del = document.getElementById('del-page-' + pageId);
+    del.disabled = false;
+    del.value = pageId;
+}
+
+function deleteChoice(pageId, choiceId) {
+    var row = document.getElementById('choice-row-' + choiceId);
+    row.style.opacity = '0.4';
+    row.style.pointerEvents = 'none';
+    var del = document.getElementById('del-choice-' + choiceId);
+    del.disabled = false;
+    del.value = choiceId;
+}
+
+function addNewChoice(pageId) {
+    var container = document.getElementById('new-choices-' + pageId);
+    var div = document.createElement('div');
+    div.className = 'choice-row';
+    div.innerHTML =
+        '<input type="text" name="new_choice_text_' + pageId + '[]" placeholder="Choice text" required>' +
+        '<select name="new_choice_target_' + pageId + '[]" required>' +
+        '<option value="">-- Goes to page --</option>' +
+        buildPageOptions(null) +
+        '</select>' +
+        '<button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button>';
+    container.appendChild(div);
+}
+
+function addNewPage() {
+    var idx = newPageCount++;
+    var container = document.getElementById('new-pages-container');
+    var div = document.createElement('div');
+    div.className = 'page-card new-page-card';
+    div.id = 'new-page-' + idx;
+    div.innerHTML =
+        '<div class="page-header">' +
+            '<strong>New Page</strong>' +
+            '<button type="button" class="btn btn-danger btn-sm" onclick="this.closest(\'.page-card\').remove()">🗑️ Remove</button>' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label>Page Text</label>' +
+            '<textarea name="new_page_text[]" rows="3" placeholder="What happens on this page?" required></textarea>' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label style="display:flex;align-items:center;gap:8px;font-weight:normal;">' +
+                '<input type="checkbox" name="new_page_ending[]" value="' + idx + '" ' +
+                    'onchange="toggleNewEnding(' + idx + ')" style="width:auto;">' +
+                ' This is an ending page' +
+            '</label>' +
+        '</div>' +
+        '<div id="new-ending-label-' + idx + '" class="hidden" style="margin-left:20px;">' +
+            '<div class="form-group">' +
+                '<label>Ending Label</label>' +
+                '<input type="text" name="new_page_ending_label[]" placeholder="e.g. Good Ending">' +
+            '</div>' +
+        '</div>' +
+        '<div id="new-page-choices-section-' + idx + '">' +
+            '<h4 style="margin-top:15px;">Choices</h4>' +
+            '<div id="new-page-choices-' + idx + '"></div>' +
+            '<button type="button" class="btn btn-secondary btn-sm" ' +
+                'onclick="addChoiceForNewPage(' + idx + ')">+ Add Choice</button>' +
+        '</div>';
+    container.appendChild(div);
+}
+
+function toggleNewEnding(idx) {
+    var cb = document.querySelector('input[name="new_page_ending[]"][value="' + idx + '"]');
+    document.getElementById('new-ending-label-' + idx).classList.toggle('hidden', !cb.checked);
+    document.getElementById('new-page-choices-section-' + idx).classList.toggle('hidden', cb.checked);
+}
+
+function addChoiceForNewPage(idx) {
+    var container = document.getElementById('new-page-choices-' + idx);
+    var div = document.createElement('div');
+    div.className = 'choice-row';
+    div.innerHTML =
+        '<input type="text" name="new_page_choice_text_' + idx + '[]" placeholder="Choice text" required>' +
+        '<select name="new_page_choice_target_' + idx + '[]" required>' +
+        '<option value="">-- Goes to page --</option>' +
+        buildPageOptions(null) +
+        '</select>' +
+        '<button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button>';
+    container.appendChild(div);
+}
+</script>
+{% endblock %}

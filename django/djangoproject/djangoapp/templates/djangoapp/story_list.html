@@ -1,0 +1,63 @@
+{% extends "djangoapp/base.html" %}
+
+{% block title %}Browse Stories - NAHB Adventure{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <h1>🌟 Published Stories</h1>
+    {% if user.is_authenticated %}
+        <a href="{% url 'create_story' %}" class="btn btn-success">✨ Create New Story</a>
+    {% endif %}
+</div>
+
+{% if stories %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px;">
+    {% for story in stories %}
+        <div class="card">
+            <h3>{{ story.title }}</h3>
+            <p style="color: #666; min-height: 60px; margin: 15px 0;">
+                {{ story.description|truncatewords:25 }}
+            </p>
+            
+            <div style="display: flex; gap: 15px; margin: 15px 0; font-size: 14px; color: #999;">
+                <span>👥 {{ story.play_count }} play{{ story.play_count|pluralize }}</span>
+                {% if story.avg_rating %}
+                    <span>⭐ {{ story.avg_rating|floatformat:1 }} ({{ story.rating_count }})</span>
+                {% else %}
+                    <span>⭐ No ratings</span>
+                {% endif %}
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <a href="{% url 'start_story' story.id %}" class="btn btn-primary" style="flex: 1; text-align: center;">
+                    ▶️ Play Story
+                </a>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'rate_story' story.id %}" class="btn btn-secondary" title="Rate this story">
+                        ⭐
+                    </a>
+                    <a href="{% url 'report_story' story.id %}" class="btn btn-danger" title="Report this story">
+                        🚩
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+    </div>
+{% else %}
+    <div class="card" style="text-align: center; padding: 60px 20px;">
+        <h2>📚 No stories available yet</h2>
+        <p style="color: #666; margin: 20px 0;">Be the first to create an adventure!</p>
+        {% if user.is_authenticated %}
+            <a href="{% url 'create_story' %}" class="btn btn-success" style="font-size: 18px; padding: 15px 30px;">
+                ✨ Create First Story
+            </a>
+        {% else %}
+            <a href="{% url 'register' %}" class="btn btn-primary" style="font-size: 18px; padding: 15px 30px;">
+                📝 Sign Up to Create Stories
+            </a>
+        {% endif %}
+    </div>
+{% endif %}
+
+{% endblock %}

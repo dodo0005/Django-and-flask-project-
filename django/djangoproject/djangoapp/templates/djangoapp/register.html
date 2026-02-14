@@ -1,0 +1,62 @@
+{% extends "djangoapp/base.html" %}
+
+{% block title %}Register - NAHB Adventure{% endblock %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 50px auto;">
+    <div class="card" style="padding: 40px;">
+        <h1 style="text-align: center; margin-bottom: 30px;">Create Account</h1>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="message error">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+            
+            <div class="form-group">
+                <label for="{{ form.username.id_for_label }}">Username</label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                    <small style="color: #f44336;">{{ form.username.errors.0 }}</small>
+                {% endif %}
+                <small style="color: #666; display: block; margin-top: 5px;">
+                    {{ form.username.help_text|safe }}
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.password1.id_for_label }}">Password</label>
+                {{ form.password1 }}
+                {% if form.password1.errors %}
+                    <small style="color: #f44336;">{{ form.password1.errors.0 }}</small>
+                {% endif %}
+                <small style="color: #666; display: block; margin-top: 5px;">
+                    {{ form.password1.help_text|safe }}
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.password2.id_for_label }}">Confirm Password</label>
+                {{ form.password2 }}
+                {% if form.password2.errors %}
+                    <small style="color: #f44336;">{{ form.password2.errors.0 }}</small>
+                {% endif %}
+                <small style="color: #666; display: block; margin-top: 5px;">
+                    {{ form.password2.help_text|safe }}
+                </small>
+            </div>
+            
+            <button type="submit" class="btn btn-success" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 20px;">
+                Create Account
+            </button>
+        </form>
+        
+        <p style="text-align: center; margin-top: 20px; color: #666;">
+            Already have an account? <a href="{% url 'login' %}" style="color: #667eea;">Login here</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
