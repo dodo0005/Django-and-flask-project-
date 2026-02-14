@@ -1,0 +1,54 @@
+{% extends "djangoapp/base.html" %}
+
+{% block content %}
+<h1>Story Statistics</h1>
+
+<h2>Most Played Stories</h2>
+{% if play_stats %}
+    <table border="1" cellpadding="10">
+        <thead>
+            <tr>
+                <th>Story ID</th>
+                <th>Total Plays</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for stat in play_stats %}
+            <tr>
+                <td>{{ stat.story_id }}</td>
+                <td>{{ stat.total_plays }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No play statistics available yet.</p>
+{% endif %}
+
+<h2>Ending Distribution</h2>
+{% if ending_stats %}
+    <table border="1" cellpadding="10">
+        <thead>
+            <tr>
+                <th>Story ID</th>
+                <th>Ending Page ID</th>
+                <th>Times Reached</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for stat in ending_stats %}
+            <tr>
+                <td>{{ stat.story_id }}</td>
+                <td>{{ stat.ending_page_id }}</td>
+                <td>{{ stat.count }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No ending statistics available yet.</p>
+{% endif %}
+
+<p><a href="{% url 'story_list' %}">Back to Stories</a></p>
+
+{% endblock %}

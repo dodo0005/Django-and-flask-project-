@@ -1,0 +1,29 @@
+{% extends "djangoapp/base.html" %}
+
+{% block content %}
+<h1>Report Story: {{ story.title }}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    
+    <p>
+        <label for="reason">Reason:</label><br>
+        <select name="reason" id="reason" required>
+            <option value="spam">Spam</option>
+            <option value="offensive">Offensive Content</option>
+            <option value="inappropriate">Inappropriate</option>
+            <option value="copyright">Copyright Violation</option>
+            <option value="other">Other</option>
+        </select>
+    </p>
+    
+    <p>
+        <label for="description">Description:</label><br>
+        <textarea name="description" id="description" rows="5" cols="50" required></textarea>
+    </p>
+    
+    <button type="submit">Submit Report</button>
+    <a href="{% url 'story_list' %}">Cancel</a>
+</form>
+
+{% endblock %}

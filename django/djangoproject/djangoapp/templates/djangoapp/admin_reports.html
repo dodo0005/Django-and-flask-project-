@@ -1,0 +1,42 @@
+{% extends "djangoapp/base.html" %}
+
+{% block content %}
+<h1>Admin - Story Reports</h1>
+
+{% if reports %}
+    <table border="1" cellpadding="10">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Story ID</th>
+                <th>Reason</th>
+                <th>Description</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for report in reports %}
+            <tr>
+                <td>{{ report.id }}</td>
+                <td>{{ report.user.username }}</td>
+                <td>{{ report.story_id }}</td>
+                <td>{{ report.get_reason_display }}</td>
+                <td>{{ report.description|truncatewords:20 }}</td>
+                <td>{{ report.created_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                    <a href="{% url 'resolve_report' report.id %}">Mark Resolved</a> |
+                    <a href="{% url 'suspend_story' report.story_id %}">Suspend Story</a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No unresolved reports.</p>
+{% endif %}
+
+<p><a href="{% url 'story_list' %}">Back to Stories</a></p>
+
+{% endblock %}

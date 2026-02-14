@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>page</title>
+</head>
+<body>
+  {% extends "djangoapp/base.html" %}
+
+{% block content %}
+<p>DEBUG PAGE ID: {{ page.id }}</p>
+
+<h2>{{ page.text }}</h2>
+
+{% if page.is_ending %}
+    <h3>Ending: {{ page.ending_label|default:"(No label)" }}</h3>
+    <a href="/">Back to stories</a>
+{% else %}
+    {% if choices %}
+        <ul>
+        {% for choice in choices %}
+            <li>
+                <a href="{% url 'show_page' choice.next_page_id story_id %}">
+                    {{ choice.text }}
+                </a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No choices available for this page.</p>
+    {% endif %}
+{% endif %}
+{% endblock %}
+</body>
+</html>
